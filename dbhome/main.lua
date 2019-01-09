@@ -31,6 +31,7 @@ end)
 m:connect(cfg.URL_MQTT, 1883, 0, function(client)
   print("connected")
   client:subscribe("/radiolog/cmd", 0, function(client) print("subscribe success") end)
+  client:publish("/radiolog/"..dev_ID.."/status", "hello", 0, 0)
   mqtt_status = true
 end,
 function(client, reason)
@@ -40,13 +41,11 @@ end)
 tmr.alarm(0,10000, 1, function()
   local pl = "time: "..tmr.time()
   if mqtt_status then
-    s = ""
+    s = tmr.time() .. ";"
     for i, v in ipairs(lib.temp()) do
         s = s .. i .. ":" .. v .. ";"
     end
-    m:publish("/radiolog/"..dev_ID.."/status", "hello", 0, 0)
-    m:publish("/radiolog/"..dev_ID.."/timestamp", pl, 0, 0)
-    m:publish("/radiolog/"..dev_ID.."/temp", s, 0, 0)
+    m:publish("/radiolog/"..dev_ID.."/data", s, 0, 0)
   end
 end)
 
