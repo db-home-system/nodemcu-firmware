@@ -7,7 +7,6 @@ function startup()
     else
         print("Running")
         file.close("init.lua")
-        MAC_ADDRESS = wifi.sta.getmac()
         dofile("main.lua")
     end
 end
@@ -25,7 +24,7 @@ wifi_got_ip_event = function(T)
   print("Wifi connection is ready! IP address is: "..T.IP)
   print("Startup will resume momentarily, you have 3 seconds to abort.")
   print("Waiting...")
-  tmr.create():alarm(3000, tmr.ALARM_SINGLE, startup)
+  tmr.create():alarm(1000, tmr.ALARM_SINGLE, startup)
 end
 
 wifi_disconnect_event = function(T)
@@ -65,9 +64,13 @@ wifi.eventmon.register(wifi.eventmon.STA_CONNECTED, wifi_connect_event)
 wifi.eventmon.register(wifi.eventmon.STA_GOT_IP, wifi_got_ip_event)
 wifi.eventmon.register(wifi.eventmon.STA_DISCONNECTED, wifi_disconnect_event)
 
+HOSTNAME = string.gsub(wifi.sta.getmac(), ":","")
+HOSTNAME = "Node-"..string.sub(HOSTNAME, 7)
+
 print("Connecting to WiFi access point...")
 wifi.setmode(wifi.STATION)
-wifi.sta.config({ssid=SSID, pwd=PASSWORD})
-mac_addr = wifi.sta.getmac()
-print(mac_addr)
+wifi.sta.sethostname(HOSTNAME)
+wifi.sta.setip({ ip = IP, netmask = NETMASK, gateway = GATEWAY })
+wifi.sta.config({ ssid=SSID, pwd=PASSWORD })
+
 
