@@ -8,14 +8,14 @@
 // See https://github.com/nodemcu/nodemcu-firmware/pull/1127 for discussions.
 // New modules should be disabled by default and added in alphabetical order.
 #define LUA_USE_MODULES_ADC
-//#define LUA_USE_MODULES_ADS1115
+#define LUA_USE_MODULES_ADS1115
 //#define LUA_USE_MODULES_ADXL345
 //#define LUA_USE_MODULES_AM2320
 //#define LUA_USE_MODULES_APA102
 #define LUA_USE_MODULES_BIT
 //#define LUA_USE_MODULES_BLOOM
 //#define LUA_USE_MODULES_BMP085
-//#define LUA_USE_MODULES_BME280
+#define LUA_USE_MODULES_BME280
 //#define LUA_USE_MODULES_BME680
 //#define LUA_USE_MODULES_COAP
 //#define LUA_USE_MODULES_COLOR_UTILS
