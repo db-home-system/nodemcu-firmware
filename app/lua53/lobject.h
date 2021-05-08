@@ -134,12 +134,17 @@ typedef union Value {
 
 #define TValuefields	Value value_; int tt_
 
+#ifdef LUA_USE_ESP
+#  pragma pack(4)
+#endif
 
 typedef struct lua_TValue {
   TValuefields;
 } TValue;
 
-
+#ifdef LUA_USE_ESP
+#  pragma pack()
+#endif
 
 /* macro defining a nil value */
 #define NILCONSTANT	{NULL}, LUA_TNIL
@@ -583,12 +588,6 @@ typedef struct ROTable {
 ** (address of) a fixed nil value
 */
 #define luaO_nilobject		(&luaO_nilobject_)
-
-/*
-** KeyCache used for resolution of ROTable entries and Cstrings
-*/
-typedef size_t KeyCache;
-typedef KeyCache KeyCacheLine[KEYCACHE_M];
 
 LUAI_DDEC const TValue luaO_nilobject_;
 

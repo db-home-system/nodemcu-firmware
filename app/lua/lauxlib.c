@@ -25,9 +25,9 @@
 */
 
 #define lauxlib_c
+#include "lauxlib.h"
 #define LUA_LIB
 
-#include "lauxlib.h"
 #include "lgc.h"
 #include "ldo.h"
 #include "lobject.h"
@@ -214,7 +214,7 @@ LUALIB_API int luaL_argerror (lua_State *L, int narg, const char *extramsg) {
 
 LUALIB_API int luaL_typerror (lua_State *L, int narg, const char *tname) {
   const char *msg = lua_pushfstring(L, "%s expected, got %s",
-                                    tname, lua_typename(L, narg));
+                                    tname, luaL_typename(L, narg));
   return luaL_argerror(L, narg, msg);
 }
 
@@ -285,21 +285,25 @@ LUALIB_API int luaL_rometatable (lua_State *L, const char* tname, const ROTable 
   return 1;
 }
 
-LUALIB_API void *luaL_checkudata (lua_State *L, int ud, const char *tname) {
+LUALIB_API void *luaL_testudata (lua_State *L, int ud, const char *tname) {
   void *p = lua_touserdata(L, ud);
   if (p != NULL) {  /* value is a userdata? */
     if (lua_getmetatable(L, ud)) {  /* does it have a metatable? */
       lua_getfield(L, LUA_REGISTRYINDEX, tname);  /* get correct metatable */
-      if (lua_rawequal(L, -1, -2)) {  /* does it have the correct mt? */
-        lua_pop(L, 2);  /* remove both metatables */
-        return p;
-      }
+      if (!lua_rawequal(L, -1, -2))  /* not the same? */
+        p = NULL;  /* value is a userdata with wrong metatable */
+      lua_pop(L, 2);  /* remove both metatables */
+      return p;
     }
   }
-  luaL_typerror(L, ud, tname);  /* else error */
-  return NULL;  /* to avoid warnings */
+  return NULL;  /* value is not a userdata with a metatable */
 }
 
+LUALIB_API void *luaL_checkudata (lua_State *L, int ud, const char *tname) {
+  void *p = luaL_testudata(L, ud, tname);
+  if (p == NULL) luaL_typerror(L, ud, tname);
+  return p;
+}
 
 LUALIB_API void luaL_checkstack (lua_State *L, int space, const char *mes) {
   if (!lua_checkstack(L, space))
@@ -684,6 +688,26 @@ LUALIB_API void luaL_unref (lua_State *L, int t, int ref) {
 }
 
 
+LUALIB_API void (luaL_reref) (lua_State *L, int t, int *ref) {
+  int reft;
+/*
+ * If the ref is positive and the entry in table t exists then
+ * overwrite the value otherwise fall through to luaL_ref()
+ */   
+  if (ref) {
+    if (*ref >= 0) {
+      t = abs_index(L, t);
+      lua_rawgeti(L, t, *ref);
+      reft = lua_type(L, -1);
+      lua_pop(L, 1);
+      if (reft != LUA_TNIL) {
+        lua_rawseti(L, t, *ref);
+        return;
+      }
+    }
+    *ref = luaL_ref(L, t);
+  }
+}
 
 /*
 ** {======================================================
@@ -899,23 +923,23 @@ LUALIB_API void luaL_assertfail(const char *file, int line, const char *message)
  * is the option to exit the interactive session and start the Xtensa remote GDB
  * which will then sync up with the remote GDB client to allow forensics of the error.
  */
-#ifdef LUA_CROSS_COMPILER
-LUALIB_API void lua_debugbreak(void) {
-  puts(" lua_debugbreak ");  /* allows BT analysis of assert fails */
-}
-#else
 extern void gdbstub_init(void);
+extern void gdbstub_redirect_output(int);
 
-LUALIB_API void lua_debugbreak(void) {
+LUALIB_API void lua_debugbreak (void) {
+#ifdef LUA_CROSS_COMPILER
+  puts(" lua_debugbreak ");  /* allows gdb BT analysis of assert fails */
+#else
   static int repeat_entry = 0;
   if  (repeat_entry == 0) {
     dbg_printf("Start up the gdb stub if not already started\n");
     gdbstub_init();
+    gdbstub_redirect_output(1);
     repeat_entry = 1;
   }
   asm("break 0,0" ::);
-}
 #endif
+}
 #endif
 
 

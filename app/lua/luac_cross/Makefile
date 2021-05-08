@@ -15,6 +15,20 @@ CCFLAGS += -Wall
 
 TARGET = host
 
+
+# Validate LUA setting
+ifeq ("$(LUA)","")
+else ifeq ("$(LUA)","51")
+  # ok
+else ifeq ("$(LUA)","53")
+  $(error Your variable LUA="$(LUA)" looks like you probably want \
+    app/lua53/host/Makefile instead)
+else
+  $(error Unsupported value "$(LUA)" for variable "LUA", \
+    expected empty/unset (recommended) or "51")
+endif
+
+
 VERBOSE ?=
 V ?= $(VERBOSE)
 ifeq ("$(V)","1")
@@ -43,7 +57,7 @@ LUASRC  := lapi.c      lauxlib.c   lbaselib.c  lcode.c     ldblib.c    ldebug.c 
            ldo.c       ldump.c     lfunc.c     lgc.c       linit.c     llex.c \
            lmathlib.c  lmem.c      loadlib.c   lobject.c   lopcodes.c  lparser.c \
            lstate.c    lstring.c   lstrlib.c   ltable.c    ltablib.c \
-           ltm.c       lundump.c   lvm.c       lzio.c
+           ltm.c       lundump.c   lvm.c       lzio.c      lnodemcu.c
 UZSRC   := uzlib_deflate.c crc32.c
 
 #

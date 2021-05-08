@@ -114,7 +114,7 @@ static void callback_callOne(lua_State* L, int cb, int mask, int arg, uint32_t t
     lua_pushinteger(L, arg);
     lua_pushinteger(L, time);
 
-    lua_call(L, 3, 0);
+    luaL_pcallx(L, 3, 0);
   }
 }
 
@@ -254,8 +254,8 @@ static int lrotary_getpos( lua_State* L )
     return 0;
   }
 
-  lua_pushnumber(L, (pos << 1) >> 1);
-  lua_pushnumber(L, (pos & 0x80000000) ? MASK(PRESS) : MASK(RELEASE));
+  lua_pushinteger(L, (pos << 1) >> 1);
+  lua_pushinteger(L, (pos & 0x80000000) ? MASK(PRESS) : MASK(RELEASE));
 
   return 2;
 }

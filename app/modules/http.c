@@ -33,7 +33,7 @@ static void http_callback( char * response, int http_status, char ** full_respon
 
     lua_rawgeti(L, LUA_REGISTRYINDEX, http_callback_registry);
 
-    lua_pushnumber(L, http_status);
+    lua_pushinteger(L, http_status);
     if ( http_status != HTTP_STATUS_GENERIC_ERROR && response)
     {
       lua_pushlstring(L, response, (size_t)body_size);
@@ -100,7 +100,7 @@ static void http_callback( char * response, int http_status, char ** full_respon
     luaL_unref(L, LUA_REGISTRYINDEX, http_callback_registry);
     http_callback_registry = LUA_NOREF;
 
-    lua_call(L, 3, 0); // With 3 arguments and 0 result
+    luaL_pcallx(L, 3, 0); // With 3 arguments and 0 result
   }
 }
 

@@ -42,21 +42,34 @@
 //#define DISABLE_STARTUP_BANNER
 
 
-// Three separate build variants are now supported. The main difference is in the
-// processing of numeric data types.  If LUA_NUMBER_INTEGRAL is defined, then
+// When using Lua 5.1, two different builds are now supported.
+// The main difference is in the // processing of numeric data types.
+// If LUA_NUMBER_INTEGRAL is defined, then
 // all numeric calculations are done in integer, with divide being an integer
-// operations, and decimal fraction constants are illegal.  Otherwise all
-// numeric operations use floating point, though they are exact for integer
-// expressions < 2^53.
-
-// The main advantage of INTEGRAL builds is that the basic internal storage unit,
-// the TValue, is 8 bytes long.  We have now reduced the size of FP TValues to
-// 12 bytes rather than the previous 16 as this gives a material RAM saving with
-// no performance loss.  However, you can define LUA_DWORD_ALIGNED_TVALUES and
-// this will force 16 byte TValues on FP builds.
+// operation, and decimal fraction constants are illegal.
+// Otherwise all floating point operations use doubles. All integer values
+// can be represented exactly in floating point.
 
 //#define LUA_NUMBER_INTEGRAL
-//#define LUA_DWORD_ALIGNED_TVALUES
+
+// When using Lua 5.3, two different builds are now supported. 
+// The main difference is in the processing of numeric data types.
+// If LUA_NUMBER_64BITS is defined, then doubles are used to hold floating
+// point numbers. Integers under 2^53 are representable exactly in doubles.
+// Integers are held in 64-bit variables. 
+// Otherwise all floating point operations use floats. Only integers under 2^24
+// can be represented exactly in floating point. Integers are represented in 32 bit variables.
+// Note that Lua 5.3 also supports Integers natively, but you have to be careful 
+// not to promote an integer to a floating point variable if you are using a float build
+// as you can lose precision.
+
+//#define LUA_NUMBER_64BITS
+
+// The main advantage of INTEGRAL builds and non 64BITS builds is that the basic internal
+// storage unit, the TValue, is 8 bytes long.  For 64BITS builds, we have now reduced
+// the size of FP TValues to 12 bytes rather than the previous 16 as this gives a
+// material RAM saving with no performance loss.
+//
 
 
 // The Lua Flash Store (LFS) allows you to store Lua code in Flash memory and
@@ -138,7 +151,7 @@
 
 // The net module optionally offers net info functionnality. Uncomment the following
 // to enable the functionnality.
-#define NET_PING_ENABLE 
+#define NET_PING_ENABLE
 
 // The WiFi module optionally offers an enhanced level of WiFi connection
 // management, using internal timer callbacks.  Whilst many Lua developers
@@ -165,7 +178,9 @@
 // alphanumeric characters. If you are imaging multiple modules with this
 // firmware then you must also define WIFI_STA_HOSTNAME_APPEND_MAC to
 // append the last 3 octets of the MAC address.  Note that the total
-// Hostname MUST be 32 chars or less.
+// Hostname MUST be 32 chars or less. If the resulting hostname is 
+// invalid, then it will not be used, and a message will be printed
+// during boot.
 
 //#define WIFI_STA_HOSTNAME "NodeMCU"
 //#define WIFI_STA_HOSTNAME_APPEND_MAC
@@ -174,7 +189,7 @@
 // If you use the enduser_setup module, then you can also set the default
 // SSID when this module is running in AP mode.
 
-#define ENDUSER_SETUP_AP_SSID "SetupGadget"
+#define ENDUSER_SETUP_AP_SSID "NodeMCU"
 
 
 // I2C software driver partially supports use of GPIO16 (D0) pin for SCL line.
@@ -239,19 +254,29 @@
 #  define LUA_FLASH_STORE                 0x0
 #endif
 
-#define SPIFFS_FIXED_LOCATION             0x0
+#ifndef SPIFFS_FIXED_LOCATION
+  #define SPIFFS_FIXED_LOCATION           0x0
+  // You'll rarely need to customize this, because nowadays
+  // it's usually overruled by the partition table anyway.
+#endif
 #ifndef SPIFFS_MAX_FILESYSTEM_SIZE
 #  define SPIFFS_MAX_FILESYSTEM_SIZE      0xFFFFFFFF
 #endif
 //#define SPIFFS_SIZE_1M_BOUNDARY
 
+// The following define enables recording of the number of CPU cycles at certain
+// points in the startup process. It can be used to see where the time is being
+// consumed. It enables a nice node.startupcounts() function to get the results.
+//#define PLATFORM_STARTUP_COUNT
+
 #define LUA_TASK_PRIO             USER_TASK_PRIO_0
 #define LUA_PROCESS_LINE_SIG      2
-#define LUA_OPTIMIZE_DEBUG        2
+// LUAI_OPTIMIZE_DEBUG 0 = Keep all debug; 1 = keep line number info; 2 = remove all debug
+#define LUAI_OPTIMIZE_DEBUG       1
 #define READLINE_INTERVAL        80
 #define STRBUF_DEFAULT_INCREMENT  3
 #define LUA_USE_BUILTIN_DEBUG_MINIMAL // for debug.getregistry() and debug.traceback()
- 
+
 #if defined(DEVELOPMENT_TOOLS) && defined(DEVELOPMENT_USE_GDB)
 extern void LUA_DEBUG_HOOK (void);
 #define lua_assert(x)    ((x) ? (void) 0 : LUA_DEBUG_HOOK ())

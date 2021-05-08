@@ -1,3 +1,4 @@
+stds = stds or ...   -- set stds if this script is called by another config script
 local empty = { }
 local read_write = {read_only = false}
 
@@ -110,6 +111,15 @@ stds.nodemcu_libs = {
         setup = empty,
         startreadout = empty,
         temp = empty
+      }
+    },
+    bme280_math = {
+      fields = {
+        altitude = empty,
+        dewpoint = empty,
+        qfe2qnh = empty,
+        read = empty,
+        setup = empty
       }
     },
     bme680 = {
@@ -414,6 +424,7 @@ stds.nodemcu_libs = {
         restore = empty,
         setcpufreq = empty,
         setpartitiontable = empty,
+        setonerror = empty,
         sleep = empty,
         stripdebug = empty,
         writercr = empty,
@@ -429,6 +440,16 @@ stds.nodemcu_libs = {
             LOW_PRIORITY = empty,
             MEDIUM_PRIORITY = empty,
             HIGH_PRIORITY = empty
+          }
+        },
+        LFS = {
+          read_only = true, 
+          fields = {
+            config = empty,
+            get = empty,
+            list = empty,
+            reload = empty,
+            time = empty
           }
         }
       }
@@ -464,6 +485,22 @@ stds.nodemcu_libs = {
         RATE_8K = empty,
         SD = empty,
         new = empty
+      }
+    },
+    pipe = {
+      fields = {
+        create = empty
+      }
+    },
+    pixbuf = {
+      fields = {
+        FADE_IN = empty,
+        FADE_OUT = empty,
+        SHIFT_CIRCULAR = empty,
+        SHIFT_LOGICAL = empty,
+        init = empty,
+        newBuffer = empty,
+        write = empty
       }
     },
     pwm = {
@@ -588,7 +625,8 @@ stds.nodemcu_libs = {
         PROG = empty,
         STOP = empty,
         UP = empty,
-        sendcommand = empty
+        sendcommand = empty,
+        listen = empty
       }
     },
     spi = {
@@ -715,6 +753,11 @@ stds.nodemcu_libs = {
     websocket = {
       fields = {
         createClient = empty
+      }
+    },
+    wiegand = {
+      fields = {
+        create = empty
       }
     },
     wifi = {
@@ -918,9 +961,8 @@ stds.nodemcu_libs = {
     },
     pack = empty,
     unpack  = empty,
-    size = empty,
     package = {fields = {seeall = read_write}}
   }
 }
 
-std = "lua51+nodemcu_libs"
+std = "lua51+lua53+nodemcu_libs"

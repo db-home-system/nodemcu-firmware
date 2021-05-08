@@ -5,7 +5,6 @@
 */
 
 #define lauxlib_c
-#define LUA_LIB
 
 #include "lprefix.h"
 
@@ -29,6 +28,8 @@
 #include "lua.h"
 
 #include "lauxlib.h"
+#define LUA_LIB
+
 #ifdef LUA_USE_ESP
 #include "platform.h"
 #include "user_interface.h"
@@ -649,6 +650,26 @@ LUALIB_API void luaL_unref (lua_State *L, int t, int ref) {
   }
 }
 
+
+LUALIB_API void (luaL_reref) (lua_State *L, int t, int *ref) {
+/*
+ * If the ref is positive and the entry in table t exists then
+ * overwrite the value otherwise fall through to luaL_ref()
+ */
+  if (ref) {
+    if (*ref >= 0) {
+      t = lua_absindex(L, t);
+      int reft = lua_rawgeti(L, t, *ref);
+      lua_pop(L, 1);
+      if (reft != LUA_TNIL) {
+        lua_rawseti(L, t, *ref);
+        return;
+      }
+    }
+    *ref = luaL_ref(L, t);
+  }
+}
+
 /* }====================================================== */
 
 
@@ -684,7 +705,6 @@ typedef struct LoadF {
   char buff[BUFSIZ];  /* area for reading file */
 } LoadF;
 
-#include "llimits.h"
 static const char *getF (lua_State *L, void *ud, size_t *size) {
   LoadF *lf = (LoadF *)ud;
   (void)L;  /* not used */
@@ -1127,26 +1147,23 @@ static int errhandler_aux (lua_State *L) {
   return 0;
 }
 
-
 /*
-** Error handler for luaL_pcallx()
+** Error handler for luaL_pcallx(), called from the lua_pcall() with a single 
+** argument -- the thrown error. This plus depth=2 is passed to debug.traceback()
+** to convert into an error message which it handles in a separate posted task.
 */
 static int errhandler (lua_State *L) {
-  if (lua_isnil(L, -1))
-    return 0;
-  if (lua_type(L, -1) != LUA_TSTRING) {     /* is error object not a string? */
-    if (luaL_callmeta(L, 1, "__tostring") &&     /* does it have a metamethod */
-        lua_type(L, -1) == LUA_TSTRING) {          /* that produces a string? */
-      lua_remove(L, 1);                              /* replace ToS with this */
-    } else if (!lua_isnil(L,-1)) {
-      lua_pushfstring(L, "(error object is a %s value)", luaL_typename(L, 1));
-      lua_remove(L, 1);        /* replace ToS with error object is type value */
-    }
+  lua_getglobal(L, "debug");
+  lua_getfield(L, -1, "traceback");
+  if (lua_isfunction(L, -1)) {
+    lua_insert(L, 1);                 /* insert tracback function above error */
+    lua_pop(L, 1);                              /* dump the debug table entry */
+    lua_pushinteger(L, 2);                /* skip this function and traceback */
+    lua_call(L, 2, 1);      /* call debug.traceback and return it as a string */
+    lua_pushcclosure(L, errhandler_aux, 1);       /* report with str as upval */
+    luaL_posttask(L, LUA_TASK_HIGH);
   }
-  luaL_traceback(L, L, lua_tostring(L, 1), 1); /* append a standard traceback */
-  lua_pushcclosure(L, errhandler_aux, 1);         /* report with str as upval */
-  luaL_posttask(L, LUA_TASK_HIGH);
-  return 1;  /* return the traceback */
+  return 0;
 }
 
 /*
@@ -1155,61 +1172,17 @@ static int errhandler (lua_State *L) {
 */
 LUALIB_API int luaL_pcallx (lua_State *L, int narg, int nres) {
   int status;
-  int base = lua_gettop(L) - narg;  /* function index */
-  lua_pushcfunction(L, errhandler);  /* push message handler */
-  lua_insert(L, base);  /* put it under function and args */
+  int base = lua_gettop(L) - narg;                          /* function index */
+  lua_pushcfunction(L, errhandler);                   /* push message handler */
+  lua_insert(L, base);                      /* put it under function and args */
   status = lua_pcall(L, narg, nres, base);
-  lua_remove(L, base);  /* remove message handler from the stack */
-  return status;
-}
-
-extern void lua_main(void);
-/*
-** Task callback handler. Uses luaN_call to do a protected call with full traceback
-*/
-static void do_task (platform_task_param_t task_fn_ref, uint8_t prio) {
-  lua_State* L = lua_getstate();
-  if(task_fn_ref == (platform_task_param_t)~0 && prio == LUA_TASK_HIGH) {
-    lua_main();                   /* Undocumented hook for lua_main() restart */
-    return;
-  }
-  if (prio < LUA_TASK_LOW|| prio > LUA_TASK_HIGH)
-    luaL_error(L, "invalid posk task");
-/* Pop the CB func from the Reg */
-  lua_rawgeti(L, LUA_REGISTRYINDEX, (int) task_fn_ref);
-  luaL_checktype(L, -1, LUA_TFUNCTION);
-  luaL_unref(L, LUA_REGISTRYINDEX, (int) task_fn_ref);
-  lua_pushinteger(L, prio);
-  luaL_pcallx (L, 1, 0);
-}
-
-/*
-** Schedule a Lua function for task execution
-*/
-LUALIB_API int luaL_posttask ( lua_State* L, int prio ) {         // [-1, +0, -]
-  static platform_task_handle_t task_handle = 0;
-  if (!task_handle)
-    task_handle = platform_task_get_id(do_task);
-  if (L == NULL && prio == LUA_TASK_HIGH+1) { /* Undocumented hook for lua_main */
-    platform_post(LUA_TASK_HIGH, task_handle, (platform_task_param_t)~0);
-    return -1;
-  }
-  if (lua_isfunction(L, -1) && prio >= LUA_TASK_LOW && prio <= LUA_TASK_HIGH) {
-    int task_fn_ref = luaL_ref(L, LUA_REGISTRYINDEX);
-    if(!platform_post(prio, task_handle, (platform_task_param_t)task_fn_ref)) {
-      luaL_unref(L, LUA_REGISTRYINDEX, task_fn_ref);
-      luaL_error(L, "Task queue overflow. Task not posted");
+  lua_remove(L, base);               /* remove message handler from the stack */
+  if (status != LUA_OK && status != LUA_ERRRUN) {  
+    lua_gc(L, LUA_GCCOLLECT, 0);   /* call onerror directly if handler failed */
+    lua_pushliteral(L, "out of memory");
+    lua_pushcclosure(L, errhandler_aux, 1);            /* report EOM as upval */
+    luaL_posttask(L, LUA_TASK_HIGH);
     }
-    return task_fn_ref;
-  } else {
-    return luaL_error(L, "invalid posk task");
-  }
-}
-#else
-/*
-** Task execution isn't supported on HOST builds so returns a -1 status
-*/
-LUALIB_API int luaL_posttask( lua_State* L, int prio ) {            // [-1, +0, -]
-  return -1;
+  return status;
 }
 #endif

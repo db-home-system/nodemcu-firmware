@@ -47,7 +47,7 @@ static void callback_execute(lua_State* L, unsigned int id)
     lua_rawgeti(L, LUA_REGISTRYINDEX, callback);
     callback_free(L, id);
 
-    lua_call(L, 0, 0);
+    luaL_pcallx(L, 0, 0);
   }
 }
 
@@ -152,8 +152,8 @@ static int lswitec_getpos( lua_State* L )
   if (switec_getpos( id, &pos, &dir, &target )) {
     return luaL_error( L, "Unable to get position." );
   }
-  lua_pushnumber(L, pos);
-  lua_pushnumber(L, dir);
+  lua_pushinteger(L, pos);
+  lua_pushinteger(L, dir);
   return 2;
 }
 

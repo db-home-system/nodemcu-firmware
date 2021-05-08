@@ -85,9 +85,17 @@
 #  define LUA_FLOAT_TYPE	LUA_FLOAT_DOUBLE
 #endif
 #endif
-#  define LUA_INT_TYPE    LUA_INT_INT
+#ifdef LUA_NUMBER_64BITS
+#  define LUA_FLOAT_TYPE  LUA_FLOAT_DOUBLE
+#  define LUA_INT_TYPE    LUA_INT_LONGLONG
+#else
 #  define LUA_FLOAT_TYPE  LUA_FLOAT_FLOAT
-//#  define LUA_FLOAT_TYPE  LUA_FLOAT_DOUBLE
+#  define LUA_INT_TYPE    LUA_INT_INT
+#endif
+
+#ifdef LUA_NUMBER_INTEGRAL
+#error LUA_NUMBER_INTEGRAL is not supported in LUA5.3 builds
+#endif
 
 /*
 ** Configuration for Paths.
@@ -302,7 +310,7 @@
 #error "numeric float type not defined"
 
 #endif					/* } */
-
+#define LUA_FLOAT	LUA_NUMBER
 
 
 /*
@@ -401,7 +409,7 @@
 @@ l_sprintf is equivalent to 'snprintf' or 'sprintf' in C89.
 ** (All uses in Lua have only one format item.)
 */
-#if !defined(LUA_USE_C89) && !defined(LUA_USE_ESP8266)
+#if !defined(LUA_USE_C89)
 #define l_sprintf(s,sz,f,i)	snprintf(s,sz,f,i)
 #else
 #define l_sprintf(s,sz,f,i)	((void)(sz), sprintf(s,f,i))
